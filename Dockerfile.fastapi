@@ -1,7 +1,8 @@
 # FastAPI 专用 Dockerfile
 # 基于原有 Dockerfile 修改，专门用于运行 FastAPI REST API
+# 使用阿里云镜像源以解决国内网络访问问题
 
-FROM python:3.11-slim
+FROM registry.cn-hangzhou.aliyuncs.com/library/python:3.11-slim
 
 WORKDIR /app
 

@@ -1,9 +1,11 @@
 services:
   # FastAPI REST API 服务
   pdf2zh-api:
-    build:
-      context: .
-      dockerfile: Dockerfile.fastapi
+    image: pdf2zh-api:latest  # 使用已导入的本地镜像
+    # 注释掉 build 部分
+    # build:
+    #   context: .
+    #   dockerfile: Dockerfile.fastapi
     container_name: pdf2zh-fastapi
     ports:
       - "8000:8000"
@@ -27,24 +29,6 @@ services:
       start_period: 60s
     networks:
       - pdf2zh-network
-
-  # 原有的 GUI 服务（可选）
-  pdf2zh-gui:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: pdf2zh-gui
-    ports:
-      - "7860:7860"
-    environment:
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - pdf2zh-cache:/root/.cache/pdf2zh
-    restart: unless-stopped
-    networks:
-      - pdf2zh-network
-    profiles:
-      - gui  # 使用 profile，默认不启动
 
 volumes:
   pdf2zh-cache:
