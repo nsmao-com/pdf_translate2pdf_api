@@ -12,7 +12,8 @@
       "Bash(curl:*)",
       "Bash(echo:*)",
       "Bash(dir:*)",
-      "Bash(awk:*)"
+      "Bash(awk:*)",
+      "Bash(pip --version:*)"
     ],
     "deny": [],
     "ask": []
