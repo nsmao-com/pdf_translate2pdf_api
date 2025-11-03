@@ -1,0 +1,14 @@
+# FastAPI REST API 依赖
+# 使用方法: pip install -r requirements-fastapi.txt
+
+# FastAPI 核心
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+python-multipart>=0.0.6
+
+# PDF2ZH 核心依赖（如果未安装 pdf2zh）
+# pdf2zh>=1.9.11
+
+# 可选：性能优化
+# uvloop>=0.19.0  # Linux/macOS only
+# httptools>=0.6.0

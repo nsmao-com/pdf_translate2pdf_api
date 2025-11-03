@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # FastAPI REST API 服务
+  pdf2zh-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    container_name: pdf2zh-fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      # 可选：配置翻译服务 API Keys
+      # - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # - DEEPL_AUTH_KEY=${DEEPL_AUTH_KEY}
+      # - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+    volumes:
+      # 可选：挂载配置文件
+      # - ./config.json:/root/.config/PDFMathTranslate/config.json:ro
+      # 可选：挂载缓存目录（提高性能）
+      - pdf2zh-cache:/root/.cache/pdf2zh
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - pdf2zh-network
+
+  # 原有的 GUI 服务（可选）
+  pdf2zh-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pdf2zh-gui
+    ports:
+      - "7860:7860"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - pdf2zh-cache:/root/.cache/pdf2zh
+    restart: unless-stopped
+    networks:
+      - pdf2zh-network
+    profiles:
+      - gui  # 使用 profile，默认不启动
+
+volumes:
+  pdf2zh-cache:
+    driver: local
+
+networks:
+  pdf2zh-network:
+    driver: bridge

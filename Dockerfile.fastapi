@@ -1,0 +1,42 @@
+# FastAPI 专用 Dockerfile
+# 基于原有 Dockerfile 修改，专门用于运行 FastAPI REST API
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# 安装系统依赖（OpenCV 和其他依赖）
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y \
+    libgl1 \
+    libglib2.0-0 \
+    libxext6 \
+    libsm6 \
+    libxrender1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# 复制项目文件
+COPY pyproject.toml .
+COPY README.md .
+COPY pdf2zh ./pdf2zh
+
+# 安装 Python 依赖
+RUN pip install --upgrade pip && \
+    pip install -e . && \
+    pip install fastapi uvicorn[standard] python-multipart
+
+# 暴露端口（FastAPI 默认 8000）
+EXPOSE 8000
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# 启动 FastAPI 服务
+CMD ["python", "-m", "pdf2zh", "--fastapi", "--apiport", "8000"]
