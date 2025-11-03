@@ -236,7 +236,14 @@ def translate_stream(
         # print(obj_id)
         # print(ops_old)
         # print(ops_new.encode())
-        doc_zh.update_stream(obj_id, ops_new.encode())
+        # Use latin-1 encoding for PDF streams as per PDF specification
+        # Use 'replace' to handle characters outside latin-1 range
+        try:
+            doc_zh.update_stream(obj_id, ops_new.encode('latin-1'))
+        except UnicodeEncodeError:
+            # Fallback: encode as UTF-8 then decode as latin-1 (lossy but safe)
+            logger.warning(f"Found non-latin-1 characters in PDF stream {obj_id}, using fallback encoding")
+            doc_zh.update_stream(obj_id, ops_new.encode('utf-8', errors='replace'))
 
     doc_en.insert_file(doc_zh)
     for id in range(page_count):

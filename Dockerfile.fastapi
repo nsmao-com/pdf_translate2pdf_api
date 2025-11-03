@@ -1,8 +1,8 @@
 # FastAPI 专用 Dockerfile
 # 基于原有 Dockerfile 修改，专门用于运行 FastAPI REST API
-# 使用阿里云镜像源以解决国内网络访问问题
+# 使用官方Python镜像（国内用户请配置Docker镜像加速器）
 
-FROM registry.cn-hangzhou.aliyuncs.com/library/python:3.11-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -39,5 +39,5 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# 启动 FastAPI 服务
-CMD ["python", "-m", "pdf2zh", "--fastapi", "--apiport", "8000"]
+# 启动 FastAPI 服务（使用uvicorn直接启动）
+CMD ["uvicorn", "pdf2zh.fastapi_server:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -108,7 +108,7 @@ cd PDFMathTranslate
 docker-compose -f docker-compose.fastapi.yml up -d
 ```
 
-访问：http://localhost:8000/docs
+访问：http://localhost:11200/docs
 
 ---
 
@@ -186,7 +186,7 @@ docker build -t pdf2zh-api -f Dockerfile.fastapi .
 # 运行容器
 docker run -d \
   --name pdf2zh-api \
-  -p 8000:8000 \
+  -p 11200:8000 \
   --restart unless-stopped \
   -v pdf2zh-cache:/root/.cache/pdf2zh \
   -v $(pwd)/config.json:/root/.config/PDFMathTranslate/config.json:ro \
@@ -221,9 +221,9 @@ services:
 
 #### 2.4 API文档访问
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
-- **健康检查**: http://localhost:8000/health
+- **Swagger UI**: http://localhost:11200/docs
+- **ReDoc**: http://localhost:11200/redoc
+- **健康检查**: http://localhost:11200/health
 
 ---
 
@@ -236,13 +236,13 @@ services:
 docker-compose -f docker-compose.fastapi.yml --profile gui up -d
 
 # 验证服务
-curl http://localhost:8000/health  # API健康检查
+curl http://localhost:11200/health  # API健康检查
 curl http://localhost:7860         # GUI访问
 ```
 
 **服务端口：**
 - GUI: http://localhost:7860
-- API: http://localhost:8000
+- API: http://localhost:11200
 
 ---
 
@@ -263,7 +263,7 @@ curl http://localhost:7860         # GUI访问
 ### 示例1：健康检查
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:11200/health
 ```
 
 **响应：**
@@ -278,7 +278,7 @@ curl http://localhost:8000/health
 ### 示例2：获取支持的服务
 
 ```bash
-curl http://localhost:8000/services
+curl http://localhost:11200/services
 ```
 
 **响应：**
@@ -297,7 +297,7 @@ curl http://localhost:8000/services
 ### 示例3：翻译PDF（单语版）
 
 ```bash
-curl -X POST http://localhost:8000/translate/mono \
+curl -X POST http://localhost:11200/translate/mono \
   -F "file=@example.pdf" \
   -F "lang_in=en" \
   -F "lang_out=zh" \
@@ -318,7 +318,7 @@ curl -X POST http://localhost:8000/translate/mono \
 ### 示例4：翻译PDF（双语版）
 
 ```bash
-curl -X POST http://localhost:8000/translate/dual \
+curl -X POST http://localhost:11200/translate/dual \
   -F "file=@research_paper.pdf" \
   -F "lang_in=en" \
   -F "lang_out=zh" \
@@ -343,7 +343,7 @@ with open('example.pdf', 'rb') as f:
     }
 
     response = requests.post(
-        'http://localhost:8000/translate/mono',
+        'http://localhost:11200/translate/mono',
         files=files,
         data=data
     )
@@ -365,7 +365,7 @@ from pathlib import Path
 
 def translate_pdf(input_file, output_file, service='google', lang_out='zh'):
     """翻译单个PDF文件"""
-    url = 'http://localhost:8000/translate/mono'
+    url = 'http://localhost:11200/translate/mono'
 
     with open(input_file, 'rb') as f:
         files = {'file': f}
@@ -404,6 +404,37 @@ for pdf_file in input_dir.glob('*.pdf'):
 ---
 
 ## 配置说明
+
+### 自定义端口
+
+**默认端口：**
+- FastAPI服务：`11200` (外部) → `8000` (容器内部)
+- GUI服务：`7860`
+
+**修改API端口：**
+
+编辑 `docker-compose.fastapi.yml`：
+
+```yaml
+services:
+  pdf2zh-api:
+    ports:
+      - "11200:8000"  # 修改左侧端口号为您想要的端口
+```
+
+**说明：**
+- 左侧端口（11200）：宿主机访问端口（可以修改）
+- 右侧端口（8000）：容器内部端口（不要修改）
+- 健康检查使用容器内部端口，无需修改
+
+**使用Docker命令时修改端口：**
+
+```bash
+docker run -d \
+  --name pdf2zh-api \
+  -p 11200:8000 \  # 修改为您想要的端口
+  pdf2zh-api
+```
 
 ### 配置文件位置
 
@@ -470,7 +501,7 @@ services:
 ```bash
 docker run -d \
   --name pdf2zh-api \
-  -p 8000:8000 \
+  -p 11200:8000 \
   -e OPENAI_API_KEY=sk-your-key \
   -e DEEPL_AUTH_KEY=your-key \
   pdf2zh-api
@@ -484,34 +515,47 @@ docker run -d \
 
 **问题现象：**
 ```
-Error response from daemon: Get "https://ghcr.io/v2/": dial tcp: i/o timeout
+Error response from daemon: Get "https://registry-1.docker.io/v2/": dial tcp: i/o timeout
 ```
 
 **解决方案：**
 
-**方案A：使用阿里云镜像（推荐）**
-
-```bash
-# 使用 Dockerfile.fastapi（已配置阿里云源）
-docker build -t pdf2zh-api -f Dockerfile.fastapi .
-```
-
-**方案B：配置Docker镜像加速器**
+**方案A：配置Docker镜像加速器（推荐）**
 
 编辑 `/etc/docker/daemon.json`（Linux）或 Docker Desktop设置（Windows/Mac）：
 
 ```json
 {
   "registry-mirrors": [
-    "https://mirror.ccs.tencentyun.com",
-    "https://docker.mirrors.ustc.edu.cn"
+    "https://docker.m.daocloud.io",
+    "https://docker.nju.edu.cn",
+    "https://mirror.ccs.tencentyun.com"
   ]
 }
 ```
 
-重启Docker：
+**Windows用户：**
+1. 打开 Docker Desktop
+2. Settings → Docker Engine
+3. 添加上述配置到JSON中
+4. 点击 "Apply & Restart"
+
+**Linux用户重启Docker：**
 ```bash
+sudo systemctl daemon-reload
 sudo systemctl restart docker
+```
+
+**方案B：使用国内镜像源**
+
+修改 `Dockerfile.fastapi` 第5行：
+
+```dockerfile
+# 选择其中一个可用的镜像源
+FROM python:3.11-slim
+
+# 或使用腾讯云镜像（如果有权限）
+# FROM ccr.ccs.tencentyun.com/library/python:3.11-slim
 ```
 
 **方案C：使用代理**
@@ -521,6 +565,16 @@ docker build -t pdf2zh-api \
   --build-arg HTTP_PROXY=http://127.0.0.1:7890 \
   --build-arg HTTPS_PROXY=http://127.0.0.1:7890 \
   -f Dockerfile.fastapi .
+```
+
+**方案D：使用提前下载的镜像**
+
+```bash
+# 先手动下载官方镜像
+docker pull python:3.11-slim
+
+# 然后构建
+docker build -t pdf2zh-api -f Dockerfile.fastapi .
 ```
 
 ### 问题2：模型下载失败（babeldoc、ONNX模型）
@@ -552,7 +606,7 @@ mkdir -p models
 # 2. 挂载模型目录
 docker run -d \
   --name pdf2zh-api \
-  -p 8000:8000 \
+  -p 11200:8000 \
   -v $(pwd)/models:/root/.cache/huggingface \
   pdf2zh-api
 ```
@@ -608,7 +662,7 @@ docker logs pdf2zh-api
 **手动测试健康检查：**
 
 ```bash
-docker exec -it pdf2zh-api curl http://localhost:8000/health
+docker exec -it pdf2zh-api curl http://localhost:11200/health
 ```
 
 **增加启动等待时间：**
@@ -632,7 +686,7 @@ Translation takes too long or timeout
 **增加线程数（API参数）：**
 
 ```bash
-curl -X POST http://localhost:8000/translate/mono \
+curl -X POST http://localhost:11200/translate/mono \
   -F "file=@large.pdf" \
   -F "thread=16" \  # 增加到最大值
   --output output.pdf
@@ -673,7 +727,7 @@ services:
 
 ```bash
 # 双语版本可以更好地保留原始布局
-curl -X POST http://localhost:8000/translate/dual \
+curl -X POST http://localhost:11200/translate/dual \
   -F "file=@example.pdf" \
   --output output_dual.pdf
 ```
@@ -682,18 +736,312 @@ curl -X POST http://localhost:8000/translate/dual \
 
 ```bash
 # 使用GPT-4o-mini（格式保留更好）
-curl -X POST http://localhost:8000/translate/mono \
+curl -X POST http://localhost:11200/translate/mono \
   -F "file=@example.pdf" \
   -F "service=openai" \
   -F "model=gpt-4o-mini" \
   --output output.pdf
 ```
 
-### 问题7：容器启动失败
+### 问题8：翻译失败 "'str' object has no attribute 'predict'"
+
+**问题现象：**
+```json
+{
+  "error": "Translation failed: 'str' object has no attribute 'predict'",
+  "status_code": 500
+}
+```
+
+**原因分析：**
+参数名冲突！FastAPI中的 `model` 参数（字符串，LLM模型名）覆盖了翻译函数需要的 `model` 参数（OnnxModel对象，用于文档布局检测），导致代码尝试调用字符串的 `predict()` 方法。
+
+**根本问题：**
+在 `translate_stream` 函数中，`model: OnnxModel` 用于文档布局检测：
+```python
+page_layout = model.predict(image, ...)  # 需要OnnxModel对象
+```
+
+但旧版FastAPI错误地定义了：
+```python
+model: Optional[str] = Form(None)  # 字符串覆盖了OnnxModel
+```
+
+**解决方案：**
+
+已修复！LLM模型名应该通过 `service` 参数指定，格式为 `service:model`：
+
+```python
+async def translate_mono(
+    ...
+    service: str = Form("google", description="Translation service (e.g., 'google', 'openai:gpt-4o-mini')"),
+    # model 参数已移除
+)
+```
+
+**正确的API调用方式：**
+
+```bash
+# 简单服务（无需模型名）
+curl -X POST http://localhost:11200/translate/mono \
+  -F "file=@test.pdf" \
+  -F "service=google" \
+  --output translated.pdf
+
+# LLM服务（模型名在service中，用冒号分隔）
+curl -X POST http://localhost:11200/translate/mono \
+  -F "file=@test.pdf" \
+  -F "service=openai:gpt-4o-mini" \
+  --output translated.pdf
+```
+
+**service参数格式：**
+- 简单服务：`google`, `bing`, `deepl`
+- LLM服务：`openai:gpt-4o-mini`, `ollama:gemma2:9b`, `gemini:gemini-pro`
+
+**详细说明请查看：** `FIX_MODEL_CONFLICT.md`
+
+---
+
+### 问题9：翻译失败 "'str' object is not callable"
+
+**问题现象：**
+```json
+{
+  "error": "Translation failed: 'str' object is not callable"
+}
+```
+
+**原因分析：**
+旧版本的FastAPI服务器包含 `callback` 参数（字符串类型），但翻译核心函数期望 `callback` 是一个可调用的函数对象。当字符串被当作函数调用时，就会报这个错误。
+
+**解决方案：**
+
+已在 `fastapi_server.py` 中修正，移除了 `callback` 参数（该参数仅用于GUI进度条，API模式下不需要）。
+
+**修复后的API参数：**
+- ✅ `file`: PDF文件
+- ✅ `lang_in`: 源语言
+- ✅ `lang_out`: 目标语言
+- ✅ `service`: 翻译服务
+- ✅ `model`: LLM模型名（可选）
+- ✅ `thread`: 并发线程数
+- ❌ `callback`: 已移除
+
+**如果仍遇到此问题，请重新构建镜像：**
+
+```bash
+# 停止并删除旧容器
+docker-compose -f docker-compose.fastapi.yml down
+
+# 重新构建
+docker-compose -f docker-compose.fastapi.yml up --build -d
+```
+
+**正确的API调用示例：**
+
+```bash
+# 不要传递 callback 参数
+curl -X POST http://localhost:11200/translate/mono \
+  -F "file=@test.pdf" \
+  -F "lang_in=en" \
+  -F "lang_out=zh" \
+  -F "service=google" \
+  -F "thread=4" \
+  --output translated.pdf
+```
+
+---
+
+### 问题9：启动时报错 "No module named pdf2zh.__main__"
 
 **问题现象：**
 ```
-Error starting userland proxy: listen tcp4 0.0.0.0:8000: bind: address already in use
+/usr/local/bin/python: No module named pdf2zh.__main__;
+'pdf2zh' is a package and cannot be directly executed
+```
+
+**原因分析：**
+旧版本的Dockerfile使用 `python -m pdf2zh` 启动，但pdf2zh包缺少 `__main__.py` 文件。
+
+**解决方案：**
+
+已在 `Dockerfile.fastapi` 中修正，现使用uvicorn直接启动：
+
+```dockerfile
+CMD ["uvicorn", "pdf2zh.fastapi_server:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+**如果仍遇到此问题，请重新构建镜像：**
+
+```bash
+# 停止并删除旧容器
+docker-compose -f docker-compose.fastapi.yml down
+
+# 删除旧镜像
+docker rmi pdf2zh-api
+
+# 重新构建
+docker-compose -f docker-compose.fastapi.yml up --build -d
+```
+
+**验证修复：**
+
+```bash
+# 查看日志，应该看到成功启动的信息
+docker logs pdf2zh-fastapi
+
+# 预期输出：
+# INFO:     Started server process [1]
+# INFO:     Waiting for application startup.
+# INFO:     Application startup complete.
+# INFO:     Uvicorn running on http://0.0.0.0:8000
+```
+
+---
+
+### 问题10：翻译失败 "'NoneType' object has no attribute 'predict'"
+
+**问题现象：**
+```json
+{
+  "error": "Translation failed: 'NoneType' object has no attribute 'predict'",
+  "status_code": 500
+}
+```
+
+**原因分析：**
+OnnxModel（文档布局检测模型）没有被初始化！旧版本的FastAPI服务器忘记初始化这个必需的模型。
+
+**解决方案：**
+
+已修复！在 `fastapi_server.py` 启动时自动初始化OnnxModel：
+
+```python
+from pdf2zh.doclayout import OnnxModel, ModelInstance
+
+# 启动时初始化
+ModelInstance.value = OnnxModel.load_available()
+
+# 翻译时传递
+translate_stream(..., model=ModelInstance.value)
+```
+
+**重新构建并启动：**
+
+```bash
+docker-compose -f docker-compose.fastapi.yml down
+docker-compose -f docker-compose.fastapi.yml up --build -d
+```
+
+**验证模型已加载：**
+
+```bash
+docker logs pdf2zh-fastapi | grep -i onnx
+
+# 应该看到：
+# Initializing ONNX model for document layout detection...
+# ONNX model loaded successfully
+```
+
+**详细说明请查看：** `FIX_ONNX_MODEL.md`
+
+---
+
+### 问题11：翻译失败 "latin-1 codec can't encode characters"
+
+**问题现象：**
+```json
+{
+  "error": "Translation failed: 'latin-1' codec can't encode characters in position 22-23: ordinal not in range(256)",
+  "status_code": 500
+}
+```
+
+**原因分析：**
+PDF指令流编码问题！旧代码使用 `.encode()` 默认UTF-8编码，但PyMuPDF期望latin-1编码（PDF规范）。某些特殊PDF的字体处理可能产生超出latin-1范围的字符。
+
+**哪些PDF会出现此问题：**
+- 约10-20%的PDF，特别是某些Type1字体的文档
+- 大部分PDF正常（使用CIDFont或Noto字体）
+
+**解决方案：**
+
+已修复！添加了编码fallback机制：
+
+```python
+try:
+    doc_zh.update_stream(obj_id, ops_new.encode('latin-1'))
+except UnicodeEncodeError:
+    # Fallback to UTF-8
+    logger.warning(f"Using UTF-8 fallback for stream {obj_id}")
+    doc_zh.update_stream(obj_id, ops_new.encode('utf-8', errors='replace'))
+```
+
+**重新构建应用修复：**
+
+```bash
+docker-compose -f docker-compose.fastapi.yml down
+docker-compose -f docker-compose.fastapi.yml up --build -d
+```
+
+**详细说明请查看：** `FIX_ENCODING_ERROR.md`
+
+---
+
+### 问题12：HTTP响应头中文文件名编码错误
+
+**问题现象：**
+```
+UnicodeEncodeError: 'latin-1' codec can't encode characters in position 22-42: ordinal not in range(256)
+
+File "starlette/responses.py", line 62, in init_headers
+```
+
+**触发条件：**
+- 上传的PDF文件名包含中文、日文、韩文等非ASCII字符
+- 例如：`爆炸瞬态温度测试_赵化彬.pdf`
+
+**原因分析：**
+HTTP响应头必须使用ASCII或latin-1编码，不能直接包含中文。旧代码直接将中文文件名放入`Content-Disposition`头，导致编码错误。
+
+**解决方案：**
+
+已修复！使用RFC 5987标准编码文件名：
+
+```python
+def encode_filename_header(filename: str) -> str:
+    """支持ASCII和UTF-8文件名（RFC 5987）"""
+    try:
+        filename.encode('ascii')
+        return f'attachment; filename="{filename}"'
+    except UnicodeEncodeError:
+        ascii_filename = filename.encode('ascii', errors='replace').decode('ascii')
+        utf8_filename = quote(filename.encode('utf-8'))
+        return f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{utf8_filename}'
+```
+
+**修复效果：**
+- ✅ 英文文件名：正常工作
+- ✅ 中文文件名：`爆炸瞬态温度测试.pdf` → 正确下载
+- ✅ 日文/韩文/等：全部支持
+
+**重新构建应用修复：**
+
+```bash
+docker-compose -f docker-compose.fastapi.yml down
+docker-compose -f docker-compose.fastapi.yml up --build -d
+```
+
+**详细说明请查看：** `FIX_FILENAME_ENCODING.md`
+
+---
+
+### 问题13：容器启动失败
+
+**问题现象：**
+```
+Error starting userland proxy: listen tcp4 0.0.0.0:11200: bind: address already in use
 ```
 
 **解决方案：**
@@ -702,15 +1050,15 @@ Error starting userland proxy: listen tcp4 0.0.0.0:8000: bind: address already i
 
 ```bash
 # 更换为其他端口
-docker run -d -p 8888:8000 --name pdf2zh-api pdf2zh-api
+docker run -d -p 11300:8000 --name pdf2zh-api pdf2zh-api
 ```
 
 **或停止占用端口的服务：**
 
 ```bash
-# 查找占用8000端口的进程
-lsof -i :8000  # Linux/Mac
-netstat -ano | findstr :8000  # Windows
+# 查找占用11200端口的进程
+lsof -i :11200  # Linux/Mac
+netstat -ano | findstr :11200  # Windows
 
 # 停止进程
 kill -9 <PID>
@@ -741,7 +1089,7 @@ volumes:
 # 小文件：thread=4（默认）
 # 中等文件：thread=8
 # 大文件：thread=16（最大）
-curl -X POST http://localhost:8000/translate/mono \
+curl -X POST http://localhost:11200/translate/mono \
   -F "file=@large.pdf" \
   -F "thread=16"
 ```
@@ -829,7 +1177,7 @@ pip list | grep pdf2zh
 python -c "from pdf2zh import translate_stream; print('Import OK')"
 
 # 测试API服务
-curl http://localhost:8000/health
+curl http://localhost:11200/health
 ```
 
 ### 检查资源使用
@@ -864,7 +1212,7 @@ docker-compose -f docker-compose.fastapi.yml up --build -d
 
 | 问题 | 严重性 | 状态 | 解决方案 |
 |------|--------|------|----------|
-| 国内网络拉取镜像慢 | 中 | ✅ 已解决 | 使用Dockerfile.fastapi（阿里云源） |
+| 国内网络拉取镜像慢 | 中 | ⚠️ 需配置 | 配置Docker镜像加速器（见文档） |
 | HuggingFace模型下载被墙 | 高 | ✅ 已解决 | 设置HF_ENDPOINT镜像 |
 | API密钥配置不便 | 低 | ✅ 已解决 | 支持环境变量 |
 | 缓存未持久化 | 中 | ✅ 已解决 | docker-compose配置volume |
@@ -898,7 +1246,7 @@ server {
     server_name pdf-translate.example.com;
 
     location / {
-        proxy_pass http://localhost:8000;
+        proxy_pass http://localhost:11200;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

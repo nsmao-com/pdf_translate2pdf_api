@@ -7,6 +7,7 @@ Date: 2025
 import io
 import logging
 from typing import Optional, Dict, Any
+from urllib.parse import quote
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
 from fastapi.responses import StreamingResponse, JSONResponse
@@ -14,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from pdf2zh import translate_stream
+from pdf2zh.doclayout import OnnxModel, ModelInstance
 
 # Configure logging
 logging.basicConfig(
@@ -21,6 +23,39 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# Initialize ONNX model for document layout detection
+logger.info("Initializing ONNX model for document layout detection...")
+try:
+    ModelInstance.value = OnnxModel.load_available()
+    logger.info("ONNX model loaded successfully")
+except Exception as e:
+    logger.error(f"Failed to load ONNX model: {e}")
+    ModelInstance.value = None
+
+
+# Helper function to create RFC 5987 encoded filename
+def encode_filename_header(filename: str) -> str:
+    """
+    Create a Content-Disposition header value with proper filename encoding.
+    Supports both ASCII and UTF-8 filenames (RFC 5987).
+
+    Example output:
+        attachment; filename="document.pdf"; filename*=UTF-8''%E4%B8%AD%E6%96%87.pdf
+    """
+    # Try to encode as ASCII (for simple filenames)
+    try:
+        filename.encode('ascii')
+        # ASCII filename, use simple format
+        return f'attachment; filename="{filename}"'
+    except UnicodeEncodeError:
+        # Non-ASCII filename, use RFC 5987 format
+        # ASCII fallback (replace non-ASCII with ?)
+        ascii_filename = filename.encode('ascii', errors='replace').decode('ascii')
+        # UTF-8 encoded filename (URL-encoded)
+        utf8_filename = quote(filename.encode('utf-8'))
+        return f'attachment; filename="{ascii_filename}"; filename*=UTF-8\'\'{utf8_filename}'
+
 
 # Create FastAPI app
 app = FastAPI(
@@ -119,10 +154,8 @@ async def translate_mono(
     file: UploadFile = File(..., description="PDF file to translate"),
     lang_in: str = Form("en", description="Source language code (e.g., 'en')"),
     lang_out: str = Form("zh", description="Target language code (e.g., 'zh')"),
-    service: str = Form("google", description="Translation service to use"),
-    model: Optional[str] = Form(None, description="Model name (for LLM services)"),
-    thread: int = Form(4, description="Number of threads for translation", ge=1, le=16),
-    callback: Optional[str] = Form(None, description="Custom prompt callback")
+    service: str = Form("google", description="Translation service (e.g., 'google', 'openai:gpt-4o-mini')"),
+    thread: int = Form(4, description="Number of threads for translation", ge=1, le=16)
 ):
     """
     Translate PDF and return monolingual version (original text replaced with translation)
@@ -132,9 +165,9 @@ async def translate_mono(
     - **lang_in**: Source language (default: en)
     - **lang_out**: Target language (default: zh)
     - **service**: Translation service (default: google)
-    - **model**: Model name for LLM services (optional)
+      - Simple: `google`, `bing`, `deepl`
+      - With model: `openai:gpt-4o-mini`, `ollama:gemma2:9b`
     - **thread**: Number of threads (default: 4, max: 16)
-    - **callback**: Custom prompt template (optional)
 
     **Returns:**
     - Translated PDF file (monolingual version)
@@ -166,12 +199,8 @@ async def translate_mono(
             'lang_out': lang_out,
             'service': service,
             'thread': thread,
+            'model': ModelInstance.value,  # Pass ONNX model for document layout detection
         }
-
-        if model:
-            translate_params['model'] = model
-        if callback:
-            translate_params['callback'] = callback
 
         # Translate
         logger.info(f"Starting translation with params: {translate_params}")
@@ -187,7 +216,7 @@ async def translate_mono(
             io.BytesIO(stream_mono),
             media_type='application/pdf',
             headers={
-                'Content-Disposition': f'attachment; filename="{output_filename}"'
+                'Content-Disposition': encode_filename_header(output_filename)
             }
         )
 
@@ -203,10 +232,8 @@ async def translate_dual(
     file: UploadFile = File(..., description="PDF file to translate"),
     lang_in: str = Form("en", description="Source language code (e.g., 'en')"),
     lang_out: str = Form("zh", description="Target language code (e.g., 'zh')"),
-    service: str = Form("google", description="Translation service to use"),
-    model: Optional[str] = Form(None, description="Model name (for LLM services)"),
-    thread: int = Form(4, description="Number of threads for translation", ge=1, le=16),
-    callback: Optional[str] = Form(None, description="Custom prompt callback")
+    service: str = Form("google", description="Translation service (e.g., 'google', 'openai:gpt-4o-mini')"),
+    thread: int = Form(4, description="Number of threads for translation", ge=1, le=16)
 ):
     """
     Translate PDF and return bilingual version (original text + translation)
@@ -216,9 +243,9 @@ async def translate_dual(
     - **lang_in**: Source language (default: en)
     - **lang_out**: Target language (default: zh)
     - **service**: Translation service (default: google)
-    - **model**: Model name for LLM services (optional)
+      - Simple: `google`, `bing`, `deepl`
+      - With model: `openai:gpt-4o-mini`, `ollama:gemma2:9b`
     - **thread**: Number of threads (default: 4, max: 16)
-    - **callback**: Custom prompt template (optional)
 
     **Returns:**
     - Translated PDF file (bilingual version)
@@ -250,12 +277,8 @@ async def translate_dual(
             'lang_out': lang_out,
             'service': service,
             'thread': thread,
+            'model': ModelInstance.value,  # Pass ONNX model for document layout detection
         }
-
-        if model:
-            translate_params['model'] = model
-        if callback:
-            translate_params['callback'] = callback
 
         # Translate
         logger.info(f"Starting bilingual translation with params: {translate_params}")
@@ -271,7 +294,7 @@ async def translate_dual(
             io.BytesIO(stream_dual),
             media_type='application/pdf',
             headers={
-                'Content-Disposition': f'attachment; filename="{output_filename}"'
+                'Content-Disposition': encode_filename_header(output_filename)
             }
         )
 
@@ -287,10 +310,8 @@ async def translate_both(
     file: UploadFile = File(..., description="PDF file to translate"),
     lang_in: str = Form("en", description="Source language code (e.g., 'en')"),
     lang_out: str = Form("zh", description="Target language code (e.g., 'zh')"),
-    service: str = Form("google", description="Translation service to use"),
-    model: Optional[str] = Form(None, description="Model name (for LLM services)"),
-    thread: int = Form(4, description="Number of threads for translation", ge=1, le=16),
-    callback: Optional[str] = Form(None, description="Custom prompt callback")
+    service: str = Form("google", description="Translation service (e.g., 'google', 'openai:gpt-4o-mini')"),
+    thread: int = Form(4, description="Number of threads for translation", ge=1, le=16)
 ):
     """
     Translate PDF and return both monolingual and bilingual download links
@@ -300,9 +321,9 @@ async def translate_both(
     - **lang_in**: Source language (default: en)
     - **lang_out**: Target language (default: zh)
     - **service**: Translation service (default: google)
-    - **model**: Model name for LLM services (optional)
+      - Simple: `google`, `bing`, `deepl`
+      - With model: `openai:gpt-4o-mini`, `ollama:gemma2:9b`
     - **thread**: Number of threads (default: 4, max: 16)
-    - **callback**: Custom prompt template (optional)
 
     **Returns:**
     - JSON with base64-encoded PDFs or download instructions
@@ -334,12 +355,8 @@ async def translate_both(
             'lang_out': lang_out,
             'service': service,
             'thread': thread,
+            'model': ModelInstance.value,  # Pass ONNX model for document layout detection
         }
-
-        if model:
-            translate_params['model'] = model
-        if callback:
-            translate_params['callback'] = callback
 
         # Translate
         logger.info(f"Starting full translation with params: {translate_params}")
