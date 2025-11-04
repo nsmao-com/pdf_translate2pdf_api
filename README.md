@@ -2,6 +2,8 @@
 
 基于 [Byaidu/PDFMathTranslate](https://github.com/Byaidu/PDFMathTranslate) 改造的 FastAPI REST API 版本，用于科学文献PDF翻译，保留公式、图表和排版。
 
+**由 [奈斯猫](https://www.nsmao.com) 维护**
+
 ## 项目特点
 
 - 🚀 **RESTful API**: 提供标准的HTTP API接口，易于集成
@@ -413,6 +415,12 @@ curl http://localhost:11200/health
 本项目基于 [Byaidu/PDFMathTranslate](https://github.com/Byaidu/PDFMathTranslate) 改造而来，在原项目的基础上增加了FastAPI接口支持，特此感谢原作者的优秀工作！
 
 如果本项目对您有帮助，也请给原项目 [PDFMathTranslate](https://github.com/Byaidu/PDFMathTranslate) 一个 Star ⭐
+
+## 维护者
+
+本项目由 [奈斯猫](https://www.nsmao.com) 维护和更新。
+
+访问 [www.nsmao.com](https://www.nsmao.com) 了解更多项目和服务。
 
 ## License
 
