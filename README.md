@@ -24,7 +24,13 @@ git clone <your-repo-url>
 cd PDFMathTranslate-main
 ```
 
-2. 配置环境变量 (编辑 `docker-compose.fastapi.yml`)
+2. 预拉取基础镜像 (可选，解决构建问题)
+```bash
+# 如果构建时出现 python 镜像无法 solve 的问题，请先运行：
+docker pull python:3.11-slim
+```
+
+3. 配置环境变量 (编辑 `docker-compose.fastapi.yml`)
 ```yaml
 services:
   pdf2zh-api:
@@ -35,12 +41,12 @@ services:
       - OPENAI_MODEL=gpt-4o-mini
 ```
 
-3. 启动服务
+4. 启动服务
 ```bash
 docker-compose -f docker-compose.fastapi.yml up -d
 ```
 
-4. 访问API文档
+5. 访问API文档
 ```
 http://localhost:11200/docs
 ```
@@ -48,6 +54,9 @@ http://localhost:11200/docs
 ### 使用 Docker
 
 ```bash
+# 预拉取基础镜像 (可选，解决构建问题)
+docker pull python:3.11-slim
+
 # 构建镜像
 docker build -f Dockerfile.fastapi -t pdf2zh-api .
 
@@ -58,6 +67,8 @@ docker run -d \
   -e OPENAI_BASE_URL=https://api.openai.com/v1 \
   pdf2zh-api
 ```
+
+> **提示**: 如果在构建镜像时遇到 `failed to solve with frontend dockerfile.v0` 或 `python:3.11-slim not found` 等错误，请先执行 `docker pull python:3.11-slim` 拉取基础镜像。
 
 ## API使用示例
 
@@ -401,6 +412,10 @@ curl http://localhost:11200/health
 1. **API Key错误**: 检查环境变量配置是否正确
 2. **连接超时**: 检查 `OPENAI_BASE_URL` 等URL是否可访问
 3. **翻译失败**: 查看容器日志获取详细错误信息
+4. **Docker构建失败**:
+   - 错误: `failed to solve with frontend dockerfile.v0` 或 `python:3.11-slim not found`
+   - 解决: 先运行 `docker pull python:3.11-slim` 拉取基础镜像
+   - 可能原因: Docker Hub连接问题或本地镜像缓存问题
 
 ## 技术栈
 
