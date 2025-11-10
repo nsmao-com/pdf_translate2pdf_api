@@ -92,7 +92,7 @@ jobs:
         run: "uv build"
 
       - name: Store the distribution packages
-        uses: actions/upload-artifact@v4.6.0
+        uses: actions/upload-artifact@v5
         with:
           name: python-package-distributions
           path: dist/
@@ -243,7 +243,7 @@ jobs:
           touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: digests-${{ env.PLATFORM_PAIR }}
           path: ${{ runner.temp }}/digests/*
@@ -405,7 +405,7 @@ jobs:
           }
 
       # - name: Upload build artifact
-      #   uses: actions/upload-artifact@v4
+      #   uses: actions/upload-artifact@v5
       #   with:
       #     name: win64-exe
       #     path: ./build
@@ -420,7 +420,7 @@ jobs:
           uv run --active babeldoc --generate-offline-assets ./build
       
       - name: Upload build with offline assets artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: win64-exe-with-assets
           path: ./build
@@ -487,7 +487,7 @@ jobs:
 
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: test-results
           path: ./test/file/
